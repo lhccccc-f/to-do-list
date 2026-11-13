@@ -1,0 +1,30 @@
+# .NET / IDE
+**/bin/
+**/obj/
+.vs/
+.idea/
+*.user
+*.suo
+*.cache
+TestResults/
+artifacts/
+
+# Personal plans, settings, exports and local diagnostics
+**/Data/
+**/Exports/
+*.db
+*.db-shm
+*.db-wal
+*.log
+
+# Local verification script (intentionally not tracked)
+/Test-ToDoList.ps1
+
+# Existing unrelated web prototype (kept locally)
+/app.js
+/index.html
+/package.json
+/preview.png
+/server.cjs
+/style.css
+node_modules/

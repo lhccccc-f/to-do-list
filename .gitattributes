@@ -1,0 +1,11 @@
+* text=auto eol=lf
+*.cs text eol=lf
+*.xaml text eol=lf
+*.csproj text eol=lf
+*.props text eol=lf
+*.sln text eol=lf
+*.md text eol=lf
+*.ttf binary
+*.ico binary
+# Preserve the upstream license verbatim, including its whitespace.
+src/ToDoList.Core/Assets/Fonts/LICENSE.md -text -whitespace
