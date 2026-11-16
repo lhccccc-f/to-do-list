@@ -4,7 +4,7 @@ Windows 本地周计划与打印清单工具。C# + WinUI 3，中文界面，离
 
 ## 当前状态
 
-源码已实现，**尚未编译或运行验证**。首次编译、运行和便携发布须等项目所有者明确批准。
+已完成首次 Windows x64 自包含编译，并验证启动、界面自动保存和 Word/PDF 导出。首个本地便携版本位于 `release/v0.0.1/`。
 
 ## 功能
 
@@ -29,19 +29,23 @@ src/ToDoList.Core/      模型、SQLite、导出与便携路径
 
 ## 便携数据
 
-发布目标为 Windows x64 自包含文件夹，基线系统 Windows 10 2004 / Windows 11。无需额外安装 .NET 或 Windows App SDK，仍须在兼容系统中实际验证依赖完整性。
+发布目标为 Windows x64 自包含文件夹，基线系统 Windows 10 2004 / Windows 11。运行依赖、中文字体和 Visual C++ CRT 随文件夹分发；已验证本机从不同目录启动，其他电脑仍需实际验收。
 
 ```text
-ToDoList/
+release/v0.0.1/
   ToDoList.exe
   Assets/Fonts/         中文字体及其许可证
   Data/plans.db         计划、顺序和界面设置
   Data/plans.backup.db  打开应用时生成的上一会话完整备份
   Exports/              默认导出目录
-  …                     自包含运行依赖
+  …                     .NET、WinUI、SQLite、Visual C++ 自包含运行依赖
 ```
 
-所有内部路径基于 `AppContext.BaseDirectory`，不依赖启动目录，不包含开发电脑的盘符。关闭程序后移动整个文件夹即可带走数据。应放在当前用户可写的目录，避免 Program Files、只读盘或压缩包内直接运行。文件锁阻止同一便携目录被多个窗口同时编辑。
+所有内部路径基于 `AppContext.BaseDirectory`，不依赖启动目录，不包含开发电脑的盘符。关闭程序后移动整个版本文件夹即可带走数据。应放在当前用户可写的目录，避免 Program Files 或只读盘。文件锁阻止同一便携目录被多个窗口同时编辑。
+
+每次交付新版本使用递增目录 `v0.0.1`、`v0.0.2`……，不覆盖旧版，不生成 ZIP。同一次交付前的修错重试保留版本号。新版本不自动复制用户数据，沿用计划时请先关闭两个版本，再自行将旧版 `Data/` 复制到新版。
+
+测试发布版本包含独立标记的虚构计划。从 `v1.0.0` 起随发布附上 `删除测试数据.cmd`，仅清理未修改的示例记录，保留用户修改或新增的计划，清理成功后脚本删除自身。
 
 用户在系统文件选择器中选择的外部导出位置仅对当前导出页面生效，不写入固定机器路径。数据库和导出文件不提交到 Git。异常断电或强制结束进程可能丢失尚在 500ms 等待期内的输入；正常关闭会立即保存。
 
@@ -49,17 +53,17 @@ ToDoList/
 
 - .NET 10 SDK 或支持目标框架的更新 SDK。
 - Visual Studio / Build Tools 的 WinUI 3 C# 与 Windows SDK 构建组件。
-- 稳定版 Windows App SDK 1.8、Microsoft.Data.Sqlite 10、Open XML SDK 3、PDFsharp/MigraDoc 6、CommunityToolkit.Mvvm 8，具体版本固定于项目文件。
+- 稳定版 Windows App SDK 1.8、Microsoft.Data.Sqlite 10、Open XML SDK 3、MIT 授权的 PDFsharp/MigraDoc 6.2.4、CommunityToolkit.Mvvm 8，具体版本固定于项目文件。
 - 首次还原依赖需要连接 NuGet。
 
 经批准后，可在项目根目录执行：
 
 ```powershell
 dotnet build ToDoList.sln -c Debug -p:Platform=x64
-dotnet publish src/ToDoList.App/ToDoList.App.csproj -c Release -p:Platform=x64 -r win-x64 --self-contained true -o artifacts/portable/ToDoList
+dotnet publish src/ToDoList.App/ToDoList.App.csproj -c Release -p:Platform=x64 -r win-x64 --self-contained true -p:Version=0.0.1 -o artifacts/publish-candidate
 ```
 
-不能只复制一个 exe；必须复制完整发布文件夹。Word 在不同编辑软件中重新排版时，分页可能与 PDF 不同。特殊字符（例如少见表情）是否可显示取决于字体覆盖范围。
+上述 publish 命令仅生成候选程序。正式整理到全新的 `release/v版本号/` 前还须补齐 app-local Visual C++ CRT、许可证和发布元数据，并检查所有依赖。不能只复制一个 exe；必须复制完整版本文件夹。Word 在不同编辑软件中重新排版时，分页可能与 PDF 不同。特殊字符（例如少见表情）是否可显示取决于字体覆盖范围。
 
 ## 检查
 

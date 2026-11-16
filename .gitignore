@@ -8,6 +8,8 @@
 *.cache
 TestResults/
 artifacts/
+/release/
+/Publish-Release.ps1
 
 # Personal plans, settings, exports and local diagnostics
 **/Data/

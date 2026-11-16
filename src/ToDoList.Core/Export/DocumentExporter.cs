@@ -94,7 +94,7 @@ public sealed class DocumentExporter(string fontFile)
     private void EmbedFont(MainDocumentPart main)
     {
         var table = main.AddNewPart<FontTablePart>();
-        var fontPart = table.AddFontPart(FontPartType.FontObfuscated);
+        var fontPart = table.AddFontPart(FontPartType.FontOdttf);
         var bytes = File.ReadAllBytes(fontFile);
         var key = Guid.NewGuid();
         var keyBytes = Convert.FromHexString(key.ToString("N"));
@@ -103,7 +103,7 @@ public sealed class DocumentExporter(string fontFile)
         using (var stream = new MemoryStream(bytes)) fontPart.FeedData(stream);
         table.Fonts = new W.Fonts(new W.Font(
             new W.FontFamily { Val = W.FontFamilyValues.Swiss },
-            new W.EmbedRegularFont { Id = table.GetIdOfPart(fontPart), FontKey = key.ToString("B") })
+            new W.EmbedRegularFont { Id = table.GetIdOfPart(fontPart), FontKey = key.ToString("B").ToUpperInvariant() })
             { Name = ExportPlanner.FontFamily });
         table.Fonts.Save();
         var settings = main.AddNewPart<DocumentSettingsPart>();
