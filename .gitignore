@@ -17,8 +17,11 @@ artifacts/
 *.db-wal
 *.log
 
-# Local verification script (intentionally not tracked)
+# Local tests, launchers and verification documentation
+/tests/
+/docs/TESTING.md
 /Test-ToDoList.ps1
+/Run-Tests.cmd
 
 # Existing unrelated web prototype (kept locally)
 /app.js

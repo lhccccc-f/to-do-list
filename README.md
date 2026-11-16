@@ -23,9 +23,6 @@ Windows 本地周计划与打印清单工具。C# + WinUI 3，中文界面，离
 ```text
 src/ToDoList.App/       WinUI 3 界面与 Windows 集成
 src/ToDoList.Core/      模型、SQLite、导出与便携路径
-tests/ToDoList.Checks/  持久保存、排序、多日期、文档与失败恢复检查
-docs/TESTING.md         检查说明与人工验收清单
-Test-ToDoList.ps1       本机测试脚本，按要求加入 .gitignore
 ```
 
 原有网页动画文件保留在本地，已按与新项目无关的原型加入忽略规则。
@@ -66,13 +63,13 @@ dotnet publish src/ToDoList.App/ToDoList.App.csproj -c Release -p:Platform=x64 -
 
 ## 检查
 
-见 [docs/TESTING.md](docs/TESTING.md)。默认测试脚本只检查静态文件，不编译、不还原、不启动应用。运行核心行为检查须显式传入 `-Mode Core -AllowBuild`。
+测试源码、测试说明和启动脚本仅保留在开发者本地，均通过 `.gitignore` 排除，不随仓库分发。解决方案只包含应用与核心项目。
 
 ## Git
 
 分支 `main`，远程 `origin`：<https://github.com/lhccccc-f/to-do-list>。
 
-源代码、项目文件、测试源码、字体及许可证纳入版本控制；个人数据、导出文件、构建产物及本机 PowerShell 测试脚本忽略。
+应用源码、项目文件、字体及许可证纳入版本控制；测试源码、测试说明、测试与启动脚本、个人数据、导出文件及构建产物忽略。
 
 ## 字体授权
 
