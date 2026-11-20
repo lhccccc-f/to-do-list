@@ -1,0 +1,23 @@
+<UserControl
+    x:Class="ToDoList.App.DateSelectionView"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+    <StackPanel Spacing="12">
+        <CalendarView x:Name="Calendar" SelectionMode="Multiple" FirstDayOfWeek="Monday" NumberOfWeeksInView="6"
+                      HorizontalAlignment="Stretch" SelectedDatesChanged="Dates_Changed"
+                      CalendarViewDayItemChanging="DayItem_Changing" AutomationProperties.Name="选择日期" />
+        <Grid ColumnSpacing="10">
+            <Grid.ColumnDefinitions><ColumnDefinition /><ColumnDefinition /></Grid.ColumnDefinitions>
+            <CalendarDatePicker x:Name="RangeStart" Header="开始日期" HorizontalAlignment="Stretch" />
+            <CalendarDatePicker x:Name="RangeEnd" Grid.Column="1" Header="结束日期" HorizontalAlignment="Stretch" />
+        </Grid>
+        <StackPanel Orientation="Horizontal" Spacing="8">
+            <Button Content="应用范围" Click="ApplyRange_Click" />
+            <Button Content="所在周" Click="SelectWeek_Click" />
+            <Button Content="清空" Click="ClearDates_Click" Style="{StaticResource QuietButton}" />
+        </StackPanel>
+        <TextBlock x:Name="SelectionSummary" TextWrapping="Wrap" Foreground="{ThemeResource AccentTextFillColorPrimaryBrush}"
+                   AutomationProperties.LiveSetting="Polite" />
+        <InfoBar x:Name="RangeError" IsClosable="True" Severity="Error" />
+    </StackPanel>
+</UserControl>

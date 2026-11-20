@@ -14,10 +14,31 @@
             </Grid.RowDefinitions>
             <Grid ColumnSpacing="16">
                 <Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="Auto" /></Grid.ColumnDefinitions>
-                <StackPanel Spacing="4">
-                    <TextBlock Text="我的计划" FontSize="30" FontWeight="SemiBold" />
-                    <TextBlock Text="安排日常，留出专注的时间。" Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
-                </StackPanel>
+                <Grid ColumnSpacing="16" HorizontalAlignment="Left">
+                    <Grid.ColumnDefinitions><ColumnDefinition Width="Auto" /><ColumnDefinition Width="*" /></Grid.ColumnDefinitions>
+                    <TextBlock Text="我的计划" FontSize="30" FontWeight="SemiBold" VerticalAlignment="Center" />
+                    <Button x:Name="BookButton" Grid.Column="1" VerticalAlignment="Center" MaxWidth="250" Padding="12,8">
+                        <StackPanel Orientation="Horizontal" Spacing="10">
+                            <TextBlock x:Name="ActiveBookName" Text="日历簿 1" MaxWidth="180" TextTrimming="CharacterEllipsis" />
+                            <FontIcon Glyph="&#xE70D;" FontSize="11" VerticalAlignment="Center" />
+                        </StackPanel>
+                        <Button.Flyout>
+                            <Flyout x:Name="BookFlyout" Opening="BookFlyout_Opening">
+                                <StackPanel Spacing="10" Width="285">
+                                    <TextBlock Text="日历簿" FontWeight="SemiBold" />
+                                    <ScrollViewer MaxHeight="320">
+                                        <StackPanel x:Name="BookList" Spacing="4" />
+                                    </ScrollViewer>
+                                    <Button Click="AddBook_Click" HorizontalAlignment="Stretch">
+                                        <StackPanel Orientation="Horizontal" Spacing="8">
+                                            <FontIcon Glyph="&#xE710;" FontSize="13" /><TextBlock Text="新增日历簿" />
+                                        </StackPanel>
+                                    </Button>
+                                </StackPanel>
+                            </Flyout>
+                        </Button.Flyout>
+                    </Button>
+                </Grid>
                 <Button x:Name="DoneButton" Grid.Column="1" Style="{StaticResource AccentButtonStyle}"
                         VerticalAlignment="Center" Padding="24,11" Click="Done_Click">
                     <StackPanel Orientation="Horizontal" Spacing="8"><FontIcon Glyph="&#xE73E;" FontSize="15" /><TextBlock Text="完成" /></StackPanel>
@@ -53,7 +74,7 @@
                         <Grid x:Name="CalendarGrid" Grid.Row="2" />
                         <Grid Grid.Row="3">
                             <Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="Auto" /></Grid.ColumnDefinitions>
-                            <TextBlock Text="● 有计划   ·   圆点标记今天" FontSize="11" Foreground="{ThemeResource TextFillColorSecondaryBrush}" VerticalAlignment="Center" />
+                            <TextBlock Text="● 有计划   ·   方框标记今天" FontSize="11" Foreground="{ThemeResource TextFillColorSecondaryBrush}" VerticalAlignment="Center" />
                             <Button Grid.Column="1" Content="今天" Click="Today_Click" Style="{StaticResource QuietButton}" />
                         </Grid>
                     </Grid>
@@ -108,9 +129,14 @@
                             </ItemsControl>
                         </ScrollViewer>
                         <Grid Grid.Row="3" ColumnSpacing="12">
-                            <Grid.ColumnDefinitions><ColumnDefinition Width="Auto" /><ColumnDefinition Width="*" /></Grid.ColumnDefinitions>
+                            <Grid.ColumnDefinitions><ColumnDefinition Width="Auto" /><ColumnDefinition Width="Auto" /><ColumnDefinition Width="*" /></Grid.ColumnDefinitions>
                             <Button Click="AddRow_Click" Padding="16,10"><StackPanel Orientation="Horizontal" Spacing="8"><FontIcon Glyph="&#xE710;" FontSize="13" /><TextBlock Text="添加计划" /></StackPanel></Button>
-                            <TextBlock Grid.Column="1" Text="拖动序号排序 · 内容自动保存" FontSize="12" Foreground="{ThemeResource TextFillColorSecondaryBrush}" HorizontalAlignment="Right" VerticalAlignment="Center" />
+                            <Button Grid.Column="1" Click="BatchSettings_Click" Padding="14,10" x:Name="BatchSettingsButton">
+                                <StackPanel Orientation="Horizontal" Spacing="8"><FontIcon Glyph="&#xE8FD;" FontSize="14" /><TextBlock Text="批量设置" /></StackPanel>
+                            </Button>
+                            <Button Grid.Column="2" Click="DeleteSelectedPlans_Click" Padding="14,10" HorizontalAlignment="Right" x:Name="DeleteSelectedPlansButton">
+                                <StackPanel Orientation="Horizontal" Spacing="8"><FontIcon Glyph="&#xE74D;" FontSize="14" /><TextBlock Text="批量删除" /></StackPanel>
+                            </Button>
                         </Grid>
                     </Grid>
                 </Border>

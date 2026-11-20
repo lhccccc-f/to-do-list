@@ -30,7 +30,7 @@ public sealed class DocumentExporter(string fontFile)
             new W.ParagraphProperties(new W.KeepNext(), new W.SpacingBetweenLines { After = "360" },
                 new W.Justification { Val = W.JustificationValues.Center }),
             new W.Run(new W.RunProperties(Fonts(), new W.Bold(), new W.FontSize { Val = "52" }),
-                new W.Text(plan.Title))));
+                new W.Text(plan.Title) { Space = SpaceProcessingModeValues.Preserve })));
 
         foreach (var day in plan.Days)
         {
@@ -39,22 +39,26 @@ public sealed class DocumentExporter(string fontFile)
                 new W.Run(new W.RunProperties(Fonts(), new W.Bold(), new W.FontSize { Val = "28" }),
                     new W.Text(ExportPlanner.DateHeading(day.Date)))));
 
+            var columns = new W.TableGrid();
+            if (plan.ShowCheckboxes) columns.Append(new W.GridColumn { Width = "500" });
+            columns.Append(new W.GridColumn { Width = plan.ShowCheckboxes ? "6938" : "7438" }, new W.GridColumn { Width = "2200" });
             var table = new W.Table(new W.TableProperties(
                 new W.TableWidth { Width = "9638", Type = W.TableWidthUnitValues.Dxa },
                 new W.TableBorders(new W.TopBorder { Val = W.BorderValues.Nil }, new W.LeftBorder { Val = W.BorderValues.Nil },
                     new W.BottomBorder { Val = W.BorderValues.Nil }, new W.RightBorder { Val = W.BorderValues.Nil },
                     new W.InsideHorizontalBorder { Val = W.BorderValues.Nil }, new W.InsideVerticalBorder { Val = W.BorderValues.Nil }),
                 new W.TableLayout { Type = W.TableLayoutValues.Fixed }),
-                new W.TableGrid(new W.GridColumn { Width = "500" }, new W.GridColumn { Width = "6938" }, new W.GridColumn { Width = "2200" }));
+                columns);
 
             if (day.Items.Count == 0)
-                for (var i = 0; i < 3; i++) AddWordRow(table, "□", "________________________________", "________");
+                for (var i = 0; i < 3; i++) AddWordRow(table, plan.ShowCheckboxes ? "□" : null, "________________________________", "________");
             foreach (var item in day.Items)
             {
                 var content = TextFlow.Chunks(item.Content);
                 var duration = TextFlow.Chunks(item.Duration, 100, 5);
                 for (var i = 0; i < Math.Max(content.Count, duration.Count); i++)
-                    AddWordRow(table, i == 0 ? "□" : "", i < content.Count ? content[i] : "", i < duration.Count ? duration[i] : "");
+                    AddWordRow(table, plan.ShowCheckboxes ? (i == 0 ? "□" : "") : null,
+                        i < content.Count ? content[i] : "", i < duration.Count ? duration[i] : "");
             }
             body.Append(table);
         }
@@ -66,10 +70,11 @@ public sealed class DocumentExporter(string fontFile)
 
     private static W.RunFonts Fonts() => new() { Ascii = ExportPlanner.FontFamily, HighAnsi = ExportPlanner.FontFamily, EastAsia = ExportPlanner.FontFamily };
 
-    private static void AddWordRow(W.Table table, string checkbox, string content, string duration)
+    private static void AddWordRow(W.Table table, string? checkbox, string content, string duration)
     {
         var row = new W.TableRow(new W.TableRowProperties(new W.CantSplit()));
-        row.Append(WordCell(checkbox, 500, false), WordCell(content, 6938, false), WordCell(duration, 2200, true));
+        if (checkbox is not null) row.Append(WordCell(checkbox, 500, false));
+        row.Append(WordCell(content, checkbox is null ? 7438 : 6938, false), WordCell(duration, 2200, true));
         table.Append(row);
     }
 
@@ -151,17 +156,18 @@ public sealed class DocumentExporter(string fontFile)
             table.RightPadding = M.Unit.FromPoint(0);
             table.TopPadding = M.Unit.FromPoint(0);
             table.BottomPadding = M.Unit.FromPoint(2);
-            table.AddColumn(M.Unit.FromMillimeter(8.82));
-            table.AddColumn(M.Unit.FromMillimeter(122.38));
+            if (plan.ShowCheckboxes) table.AddColumn(M.Unit.FromMillimeter(8.82));
+            table.AddColumn(M.Unit.FromMillimeter(plan.ShowCheckboxes ? 122.38 : 131.2));
             table.AddColumn(M.Unit.FromMillimeter(38.8));
             if (day.Items.Count == 0)
-                for (var i = 0; i < 3; i++) AddPdfRow(table, "□", "________________________________", "________");
+                for (var i = 0; i < 3; i++) AddPdfRow(table, plan.ShowCheckboxes ? "□" : null, "________________________________", "________");
             foreach (var item in day.Items)
             {
                 var content = TextFlow.Chunks(item.Content);
                 var duration = TextFlow.Chunks(item.Duration, 100, 5);
                 for (var i = 0; i < Math.Max(content.Count, duration.Count); i++)
-                    AddPdfRow(table, i == 0 ? "□" : "", i < content.Count ? content[i] : "", i < duration.Count ? duration[i] : "");
+                    AddPdfRow(table, plan.ShowCheckboxes ? (i == 0 ? "□" : "") : null,
+                        i < content.Count ? content[i] : "", i < duration.Count ? duration[i] : "");
             }
         }
         var renderer = new PdfDocumentRenderer { Document = document };
@@ -170,12 +176,13 @@ public sealed class DocumentExporter(string fontFile)
         pdf.Save(path);
     }
 
-    private static void AddPdfRow(Table table, string checkbox, string content, string duration)
+    private static void AddPdfRow(Table table, string? checkbox, string content, string duration)
     {
         var row = table.AddRow();
         row.VerticalAlignment = VerticalAlignment.Top;
-        row.Cells[0].AddParagraph(checkbox);
-        row.Cells[1].AddParagraph(content);
-        row.Cells[2].AddParagraph(duration).Format.Alignment = M.ParagraphAlignment.Right;
+        var column = 0;
+        if (checkbox is not null) row.Cells[column++].AddParagraph(checkbox);
+        row.Cells[column++].AddParagraph(content);
+        row.Cells[column].AddParagraph(duration).Format.Alignment = M.ParagraphAlignment.Right;
     }
 }

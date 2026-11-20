@@ -4,13 +4,14 @@ using ToDoList.Core.Models;
 namespace ToDoList.Core.Export;
 
 [Flags]
-public enum ExportFormats { Word = 1, Pdf = 2 }
+public enum ExportFormats { Word = 1, Pdf = 2, Jpg = 4 }
 
-public sealed record ExportPlan(string Title, IReadOnlyList<DayPlan> Days);
+public sealed record ExportPlan(string Title, IReadOnlyList<DayPlan> Days, bool ShowCheckboxes = true);
 
 public static class ExportPlanner
 {
     public const string FontFamily = "LXGW Neo XiHei";
+    public const int MaxFileNameLength = 240;
     public static readonly CultureInfo Chinese = CultureInfo.GetCultureInfo("zh-CN");
 
     public static IReadOnlyList<DateOnly> WeekContaining(DateOnly date)
@@ -21,16 +22,12 @@ public static class ExportPlanner
 
     public static string TitleFor(IEnumerable<DateOnly> selection)
     {
-        var dates = selection.Distinct().Order().ToArray();
-        if (dates.Length == 0) return "to-do-list";
-        var first = dates[0].ToString("yyyy.MM.dd", CultureInfo.InvariantCulture);
-        if (dates.Length == 1) return first + " to-do-list";
-        var last = dates[^1].ToString("yyyy.MM.dd", CultureInfo.InvariantCulture);
-        var suffix = dates[^1].DayNumber - dates[0].DayNumber + 1 == dates.Length ? "" : $"（选定{dates.Length}天）";
-        return $"{first}—{last}{suffix} to-do-list";
+        var dates = DateRanges.Format(selection);
+        return dates.Length == 0 ? "to-do-list" : dates + "  to-do-list";
     }
 
-    public static ExportPlan Create(IEnumerable<DateOnly> selection, Func<DateOnly, IReadOnlyList<PlanItem>> load, bool includeEmpty)
+    public static ExportPlan Create(IEnumerable<DateOnly> selection, Func<DateOnly, IReadOnlyList<PlanItem>> load,
+        bool includeEmpty, bool showCheckboxes = true)
     {
         var dates = selection.Distinct().Order().ToArray();
         if (dates.Length == 0) throw new InvalidOperationException("请至少选择一个导出日期。");
@@ -43,15 +40,17 @@ public static class ExportPlanner
             if (entries.Length > 0 || includeEmpty) days.Add(new DayPlan(date, entries));
         }
         if (days.Count == 0) throw new InvalidOperationException("所选日期没有可导出的计划。可以开启“包含空白日期”。");
-        return new ExportPlan(TitleFor(dates), days);
+        return new ExportPlan(TitleFor(dates), days, showCheckboxes);
     }
 
     public static string ValidateFileName(string name)
     {
         name = name.Trim();
-        if (name.Length == 0 || name.Length > 120 || name.EndsWith('.') || name.EndsWith(' ') ||
+        if (name.Length > MaxFileNameLength)
+            throw new InvalidOperationException($"文件名超过 {MaxFileNameLength} 个字符，请用编辑按钮缩短名称。");
+        if (name.Length == 0 || name.EndsWith('.') || name.EndsWith(' ') ||
             name.Any(c => c < 32 || "<>:\"/\\|?*".Contains(c)))
-            throw new InvalidOperationException("文件名应为 1—120 个字符，不能包含路径或 Windows 文件名保留字符，也不能以句点结尾。");
+            throw new InvalidOperationException("请填写有效的文件名。文件名不能包含路径或 Windows 保留字符，也不能以句点结尾。");
         var stem = name.Split('.')[0].TrimEnd(' ').ToUpperInvariant();
         if (stem is "CON" or "PRN" or "AUX" or "NUL" or "CLOCK$" or "CONIN$" or "CONOUT$" ||
             (stem.Length == 4 && (stem.StartsWith("COM") || stem.StartsWith("LPT")) && "123456789¹²³".Contains(stem[3])))

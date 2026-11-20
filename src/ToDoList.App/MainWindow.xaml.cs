@@ -24,6 +24,7 @@ public sealed partial class MainWindow : Window
     private readonly DispatcherTimer _saveTimer = new() { Interval = TimeSpan.FromMilliseconds(500) };
     private readonly AppPaths _paths = new();
     private PlanRepository? _repository;
+    private CalendarBook _book = new(PlanRepository.FirstBookId, "日历簿 1", null);
     private DateOnly _selected = DateOnly.FromDateTime(DateTime.Today);
     private DateOnly _month;
     private bool _loading;
@@ -39,6 +40,8 @@ public sealed partial class MainWindow : Window
     public MainWindow()
     {
         InitializeComponent();
+        var icon = Path.Combine(_paths.Root, "Assets", "ToDoList.ico");
+        if (File.Exists(icon)) AppWindow.SetIcon(icon);
         _month = new DateOnly(_selected.Year, _selected.Month, 1);
         SystemBackdrop = new MicaBackdrop();
         var area = DisplayArea.GetFromWindowId(AppWindow.Id, DisplayAreaFallback.Primary);
@@ -72,9 +75,12 @@ public sealed partial class MainWindow : Window
                 _calendarFraction = double.IsFinite(fraction) ? Math.Clamp(fraction, 0.1, 0.9) : 1 / 2.7;
             CalendarColumn.Width = new GridLength(_calendarFraction, GridUnitType.Star);
             EditorColumn.Width = new GridLength(1 - _calendarFraction, GridUnitType.Star);
-            if (DateOnly.TryParseExact(_repository.GetSetting("SelectedDate"), "yyyy-MM-dd", CultureInfo.InvariantCulture, DateTimeStyles.None, out var savedDate))
-                _selected = savedDate;
+            var books = _repository.LoadBooks();
+            var lastBook = _repository.GetSetting("ActiveBook");
+            _book = books.FirstOrDefault(book => book.Id.ToString(CultureInfo.InvariantCulture) == lastBook) ?? books[0];
+            _selected = _book.SelectedDate ?? DateOnly.FromDateTime(DateTime.Today);
             _month = new DateOnly(_selected.Year, _selected.Month, 1);
+            UpdateBookName();
             // Back up the last complete session before allowing any edits.
             try { _repository.Backup(_paths.BackupFile); }
             catch (Exception exception) when (exception is IOException or UnauthorizedAccessException or Microsoft.Data.Sqlite.SqliteException)
@@ -85,6 +91,7 @@ public sealed partial class MainWindow : Window
         catch (Exception exception)
         {
             Workspace.IsHitTestVisible = false;
+            BookButton.IsEnabled = false;
             DoneButton.IsEnabled = false;
             SaveStatus.Text = "数据未能打开，编辑已暂停。";
             await ShowMessage("无法打开计划", "请将整个程序文件夹放到可写目录（例如 D 盘的个人文件夹）后重新打开。\n\n" + exception.Message);
@@ -93,7 +100,7 @@ public sealed partial class MainWindow : Window
 
     private void LoadSelectedDay(IReadOnlyList<PlanItem>? loaded = null)
     {
-        loaded ??= _repository!.LoadDay(_selected);
+        loaded ??= _repository!.LoadDay(_selected, _book.Id);
         _loading = true;
         try
         {
@@ -137,7 +144,7 @@ public sealed partial class MainWindow : Window
         if (!_dirty) return true;
         try
         {
-            _repository!.SaveDay(_selected, _items);
+            _repository!.SaveDay(_selected, _items, _book.Id);
         }
         catch (Exception exception)
         {
@@ -168,8 +175,8 @@ public sealed partial class MainWindow : Window
         {
             // Load before changing the selected date, so a read failure cannot
             // associate the previous day's editor contents with a different day.
-            var loaded = _repository!.LoadDay(date);
-            _repository.SetSetting("SelectedDate", date.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture));
+            var loaded = _repository!.LoadDay(date, _book.Id);
+            _repository.SetBookDate(_book.Id, date);
             _selected = date;
             _month = new DateOnly(date.Year, date.Month, 1);
             LoadSelectedDay(loaded);
@@ -185,7 +192,8 @@ public sealed partial class MainWindow : Window
         var firstNumber = _month.DayNumber - offset;
         var from = DateOnly.FromDayNumber(Math.Max(DateOnly.MinValue.DayNumber, firstNumber));
         var to = DateOnly.FromDayNumber(Math.Min(DateOnly.MaxValue.DayNumber, firstNumber + 41));
-        var counts = _repository!.GetDayCounts(from, to);
+        var counts = _repository!.GetDayCounts(from, to, _book.Id);
+        var today = DateOnly.FromDateTime(DateTime.Today);
         CalendarGrid.Children.Clear();
         CalendarGrid.RowDefinitions.Clear();
         CalendarGrid.ColumnDefinitions.Clear();
@@ -203,7 +211,7 @@ public sealed partial class MainWindow : Window
             content.Children.Add(label);
             var marker = new TextBlock
             {
-                Text = count > 0 ? (CalendarColumn.ActualWidth > 390 ? $"{count}项" : "●") : date == DateOnly.FromDateTime(DateTime.Today) ? "·" : " ",
+                Text = count > 0 ? (CalendarColumn.ActualWidth > 390 ? $"{count}项" : "●") : " ",
                 FontSize = 10, HorizontalAlignment = HorizontalAlignment.Center
             };
             content.Children.Add(marker);
@@ -217,14 +225,29 @@ public sealed partial class MainWindow : Window
             {
                 button.Background = new SolidColorBrush(Colors.Transparent);
                 button.BorderThickness = new Thickness(0);
-                button.Opacity = date.Month == _month.Month ? 1 : 0.38;
+                button.Opacity = date.Month == _month.Month || date == today ? 1 : 0.38;
             }
-            AutomationProperties.SetName(button, $"{date:yyyy年M月d日}，{count}项计划");
-            ToolTipService.SetToolTip(button, $"{date:yyyy年M月d日} · {count}项计划" + (date == DateOnly.FromDateTime(DateTime.Today) ? " · 今天" : ""));
+            var todayLabel = date == today ? " · 今天" : "";
+            AutomationProperties.SetName(button, $"{date:yyyy年M月d日}，{count}项计划" + todayLabel);
+            ToolTipService.SetToolTip(button, $"{date:yyyy年M月d日} · {count}项计划" + todayLabel);
             button.Click += (_, _) => SelectDate(date);
-            Grid.SetRow(button, i / 7);
-            Grid.SetColumn(button, i % 7);
-            CalendarGrid.Children.Add(button);
+            FrameworkElement cell = button;
+            if (date == today)
+            {
+                var outline = new Border
+                {
+                    BorderThickness = new Thickness(1),
+                    CornerRadius = button.CornerRadius,
+                    Margin = selected ? new Thickness(4) : button.Margin,
+                    IsHitTestVisible = false,
+                    BorderBrush = (Brush)Application.Current.Resources[selected
+                        ? "TextOnAccentFillColorPrimaryBrush" : "AccentTextFillColorPrimaryBrush"]
+                };
+                cell = new Grid { Children = { button, outline } };
+            }
+            Grid.SetRow(cell, i / 7);
+            Grid.SetColumn(cell, i % 7);
+            CalendarGrid.Children.Add(cell);
         }
     }
 
@@ -343,7 +366,7 @@ public sealed partial class MainWindow : Window
         if (!TrySave()) { await ShowMessage("请先保存计划", "当前保存失败，请点击右下角“重试保存”后再导出。"); return; }
         try
         {
-            ExportPane.Open(_repository!, _paths, _selected, this);
+            ExportPane.Open(_repository!, _paths, _book, _selected, this);
             MainPane.Visibility = Visibility.Collapsed;
             ExportPane.Visibility = Visibility.Visible;
         }

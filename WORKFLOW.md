@@ -12,8 +12,8 @@
 
 ## 2. 启动与本机辅助工具
 
-- `Run-Tests.cmd` 调用 `Test-ToDoList.ps1`，默认启动已有的最新 `release/v版本号/ToDoList.exe`；不会自行编译。
-- 如果没有发布版本，启动脚本会寻找开发构建产物；两者都不存在时提示需要先编译。
+- 双击 `Run-Tests.cmd` 会调用 `Test-ToDoList.ps1 -Mode UI`，重新编译当前工作区的源码（包括未提交的改动）。编译成功后启动 `artifacts/ui-preview/ToDoList.exe`，测试计划也保存在这个目录里。
+- 编译失败时，窗口保留错误信息供排查。要启动指定的现有程序，可以显式传入 `-AppPath`。
 - `Test-ToDoList.ps1 -Mode Static` 用于不触发编译的静态检查；核心行为检查须显式启用构建。
 - `Publish-Release.ps1` 是本机发布辅助入口，不纳入 Git。克隆仓库后，可按下述发布规则重新准备本地工具。
 

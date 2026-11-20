@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">
+  <title>计划日历</title>
+  <rect x="2" y="2" width="60" height="60" rx="15" fill="#115A57"/>
+  <rect x="13" y="17" width="38" height="34" rx="6" fill="none" stroke="#F3FBF8" stroke-width="3.5"/>
+  <path d="M13 26h38M23 13v8m18-8v8" fill="none" stroke="#F3FBF8" stroke-linecap="round" stroke-width="3.5"/>
+  <path d="m23 37 6 6 12-12" fill="none" stroke="#8DE6CF" stroke-linecap="round" stroke-linejoin="round" stroke-width="4.5"/>
+</svg>
