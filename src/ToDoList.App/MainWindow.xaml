@@ -39,7 +39,7 @@
                         </Button.Flyout>
                     </Button>
                 </Grid>
-                <Button x:Name="DoneButton" Grid.Column="1" Style="{StaticResource AccentButtonStyle}"
+                <Button x:Name="DoneButton" Grid.Column="1" Style="{StaticResource ExecuteButtonStyle}"
                         VerticalAlignment="Center" Padding="24,11" Click="Done_Click">
                     <StackPanel Orientation="Horizontal" Spacing="8"><FontIcon Glyph="&#xE73E;" FontSize="15" /><TextBlock Text="完成" /></StackPanel>
                 </Button>
@@ -144,7 +144,8 @@
             <Grid Grid.Row="2" ColumnSpacing="12">
                 <Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="Auto" /></Grid.ColumnDefinitions>
                 <TextBlock x:Name="SaveStatus" Text="正在打开计划…" FontSize="12" TextWrapping="Wrap" Foreground="{ThemeResource TextFillColorSecondaryBrush}" VerticalAlignment="Center" />
-                <Button Grid.Column="1" Content="重试保存" x:Name="RetrySaveButton" Visibility="Collapsed" Click="RetrySave_Click" />
+                <Button Grid.Column="1" Content="重试保存" x:Name="RetrySaveButton" Visibility="Collapsed"
+                        Style="{StaticResource ExecuteButtonStyle}" Click="RetrySave_Click" />
             </Grid>
         </Grid>
         <local:ExportView x:Name="ExportPane" Visibility="Collapsed" />

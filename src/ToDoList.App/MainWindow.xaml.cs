@@ -153,7 +153,7 @@ public sealed partial class MainWindow : Window
             return false;
         }
         _dirty = false;
-        SaveStatus.Text = $"已保存 · {DateTime.Now:HH:mm:ss}";
+        SaveStatus.Text = "已保存 · " + DateTime.Now.ToString("yyyy.MM.dd HH:mm:ss", CultureInfo.InvariantCulture);
         RetrySaveButton.Visibility = Visibility.Collapsed;
         try { RenderCalendar(); }
         catch (Exception exception) { SaveStatus.Text += "；日历刷新失败：" + exception.Message; }
@@ -303,7 +303,7 @@ public sealed partial class MainWindow : Window
             try
             {
                 var dialog = new ContentDialog { XamlRoot = Root.XamlRoot, Title = "删除这项计划？", Content = "删除后将自动保存。" };
-                DialogService.SetActions(dialog, "取消", "删除");
+                DialogService.SetActions(dialog, "删除");
                 if (await DialogService.ShowAsync(dialog) != ContentDialogResult.Secondary) return;
             }
             finally { _showingDialog = false; }

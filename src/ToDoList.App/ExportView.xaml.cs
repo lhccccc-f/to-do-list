@@ -12,12 +12,14 @@ namespace ToDoList.App;
 public sealed partial class ExportView : UserControl
 {
     private const string FolderSetting = "LastExportFolder";
+    private const string IncludeEmptySetting = "IncludeEmptyExportDates";
     private PlanRepository? _repository;
     private AppPaths? _paths;
     private Window? _owner;
     private int _bookId;
     private string? _customName;
     private string _folder = "";
+    private bool _includeEmpty = true;
 
     public event EventHandler? BackRequested;
     public bool IsExporting { get; private set; }
@@ -26,6 +28,8 @@ public sealed partial class ExportView : UserControl
     {
         InitializeComponent();
         ExportDates.SelectionChanged += (_, _) => RefreshName();
+        IncludeEmpty.Checked += IncludeEmpty_Changed;
+        IncludeEmpty.Unchecked += IncludeEmpty_Changed;
     }
 
     public void Open(PlanRepository repository, AppPaths paths, CalendarBook book, DateOnly selected, Window owner)
@@ -37,6 +41,8 @@ public sealed partial class ExportView : UserControl
         _customName = null;
         BookLabel.Text = book.Name;
         ShowCheckboxes.IsChecked = true;
+        _includeEmpty = !bool.TryParse(repository.GetSetting(IncludeEmptySetting), out var saved) || saved;
+        IncludeEmpty.IsChecked = _includeEmpty;
         ExportNotice.IsOpen = false;
         ResultButtons.Visibility = Visibility.Collapsed;
         ResultButtons.Children.Clear();
@@ -63,7 +69,7 @@ public sealed partial class ExportView : UserControl
         {
             XamlRoot = XamlRoot, Title = "编辑文件名", Content = fields
         };
-        DialogService.SetActions(dialog, "取消", "保存", defaultToExecute: true);
+        DialogService.SetActions(dialog, "保存", submitFrom: input);
         string? validName = null;
         dialog.SecondaryButtonClick += (_, args) =>
         {
@@ -87,6 +93,22 @@ public sealed partial class ExportView : UserControl
     {
         _customName = null;
         RefreshName();
+    }
+
+    private void IncludeEmpty_Changed(object sender, RoutedEventArgs e)
+    {
+        var selected = IncludeEmpty.IsChecked == true;
+        if (_repository is null || selected == _includeEmpty) return;
+        try
+        {
+            _repository.SetSetting(IncludeEmptySetting, selected.ToString());
+            _includeEmpty = selected;
+        }
+        catch (Exception exception)
+        {
+            IncludeEmpty.IsChecked = _includeEmpty;
+            ShowNotice("无法保存空白日期设置", exception.Message);
+        }
     }
 
     private void RestoreFolder()
@@ -222,7 +244,7 @@ public sealed partial class ExportView : UserControl
             XamlRoot = XamlRoot, Title = "覆盖已有文件？",
             Content = new TextBlock { Text = files, TextWrapping = TextWrapping.Wrap }
         };
-        DialogService.SetActions(dialog, "取消", $"覆盖 {paths.Count} 个文件");
+        DialogService.SetActions(dialog, $"覆盖 {paths.Count} 个文件");
         return await DialogService.ShowAsync(dialog) == ContentDialogResult.Secondary;
     }
 

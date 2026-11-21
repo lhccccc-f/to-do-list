@@ -7,7 +7,76 @@
             <ResourceDictionary.MergedDictionaries>
                 <XamlControlsResources xmlns="using:Microsoft.UI.Xaml.Controls" />
             </ResourceDictionary.MergedDictionaries>
+            <ResourceDictionary.ThemeDictionaries>
+                <ResourceDictionary x:Key="Default">
+                    <SolidColorBrush x:Key="ActionFillBrush" Color="#1D6978" />
+                    <SolidColorBrush x:Key="ActionTextBrush" Color="White" />
+                    <SolidColorBrush x:Key="CancelOutlineBrush" Color="#458F9D" />
+                    <SolidColorBrush x:Key="CancelTextBrush" Color="#9DD2DC" />
+                </ResourceDictionary>
+                <ResourceDictionary x:Key="Light">
+                    <SolidColorBrush x:Key="ActionFillBrush" Color="#1D6978" />
+                    <SolidColorBrush x:Key="ActionTextBrush" Color="White" />
+                    <SolidColorBrush x:Key="CancelOutlineBrush" Color="#1D6978" />
+                    <SolidColorBrush x:Key="CancelTextBrush" Color="#1D6978" />
+                </ResourceDictionary>
+                <ResourceDictionary x:Key="HighContrast">
+                    <SolidColorBrush x:Key="ActionFillBrush" Color="{ThemeResource SystemColorHighlightColor}" />
+                    <SolidColorBrush x:Key="ActionTextBrush" Color="{ThemeResource SystemColorHighlightTextColor}" />
+                    <SolidColorBrush x:Key="CancelOutlineBrush" Color="{ThemeResource SystemColorButtonTextColor}" />
+                    <SolidColorBrush x:Key="CancelTextBrush" Color="{ThemeResource SystemColorButtonTextColor}" />
+                </ResourceDictionary>
+            </ResourceDictionary.ThemeDictionaries>
             <CornerRadius x:Key="PanelRadius">16</CornerRadius>
+            <Style x:Key="CommandButtonBaseStyle" TargetType="Button">
+                <Setter Property="Padding" Value="14,8" />
+                <Setter Property="MinHeight" Value="32" />
+                <Setter Property="BorderThickness" Value="1" />
+                <Setter Property="CornerRadius" Value="4" />
+                <Setter Property="HorizontalContentAlignment" Value="Center" />
+                <Setter Property="VerticalContentAlignment" Value="Center" />
+                <Setter Property="UseSystemFocusVisuals" Value="True" />
+                <Setter Property="Template">
+                    <Setter.Value>
+                        <ControlTemplate TargetType="Button">
+                            <Grid x:Name="ButtonRoot">
+                                <VisualStateManager.VisualStateGroups>
+                                    <VisualStateGroup x:Name="CommonStates">
+                                        <VisualState x:Name="Normal" />
+                                        <VisualState x:Name="PointerOver">
+                                            <VisualState.Setters><Setter Target="InteractionLayer.Opacity" Value="0.10" /></VisualState.Setters>
+                                        </VisualState>
+                                        <VisualState x:Name="Pressed">
+                                            <VisualState.Setters><Setter Target="InteractionLayer.Opacity" Value="0.20" /></VisualState.Setters>
+                                        </VisualState>
+                                        <VisualState x:Name="Disabled">
+                                            <VisualState.Setters><Setter Target="ButtonRoot.Opacity" Value="0.42" /></VisualState.Setters>
+                                        </VisualState>
+                                    </VisualStateGroup>
+                                </VisualStateManager.VisualStateGroups>
+                                <Border Background="{TemplateBinding Background}" BorderBrush="{TemplateBinding BorderBrush}"
+                                        BorderThickness="{TemplateBinding BorderThickness}" CornerRadius="{TemplateBinding CornerRadius}" />
+                                <Border x:Name="InteractionLayer" Background="{TemplateBinding Foreground}"
+                                        CornerRadius="{TemplateBinding CornerRadius}" Opacity="0" />
+                                <ContentPresenter Content="{TemplateBinding Content}" ContentTemplate="{TemplateBinding ContentTemplate}"
+                                                  ContentTransitions="{TemplateBinding ContentTransitions}" Foreground="{TemplateBinding Foreground}"
+                                                  Padding="{TemplateBinding Padding}" HorizontalContentAlignment="{TemplateBinding HorizontalContentAlignment}"
+                                                  VerticalContentAlignment="{TemplateBinding VerticalContentAlignment}" />
+                            </Grid>
+                        </ControlTemplate>
+                    </Setter.Value>
+                </Setter>
+            </Style>
+            <Style x:Key="ExecuteButtonStyle" TargetType="Button" BasedOn="{StaticResource CommandButtonBaseStyle}">
+                <Setter Property="Background" Value="{ThemeResource ActionFillBrush}" />
+                <Setter Property="BorderBrush" Value="{ThemeResource ActionFillBrush}" />
+                <Setter Property="Foreground" Value="{ThemeResource ActionTextBrush}" />
+            </Style>
+            <Style x:Key="CancelButtonStyle" TargetType="Button" BasedOn="{StaticResource CommandButtonBaseStyle}">
+                <Setter Property="Background" Value="Transparent" />
+                <Setter Property="BorderBrush" Value="{ThemeResource CancelOutlineBrush}" />
+                <Setter Property="Foreground" Value="{ThemeResource CancelTextBrush}" />
+            </Style>
             <Style x:Key="QuietButton" TargetType="Button">
                 <Setter Property="Background" Value="Transparent" />
                 <Setter Property="BorderThickness" Value="0" />

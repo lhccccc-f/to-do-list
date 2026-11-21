@@ -22,7 +22,7 @@
                         <TextBlock Text="选择日期" FontSize="20" FontWeight="SemiBold" />
                         <TextBlock Text="点击日期可逐个勾选或取消，支持不连续选择。" TextWrapping="Wrap" Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
                         <local:DateSelectionView x:Name="ExportDates" />
-                        <CheckBox x:Name="IncludeEmpty" Content="包含空白日期，留出手写空间" />
+                        <CheckBox x:Name="IncludeEmpty" Content="包含空白日期，留出手写空间" IsChecked="True" />
                     </StackPanel>
                 </Border>
                 <Border Grid.Column="1" Background="{ThemeResource CardBackgroundFillColorDefaultBrush}" BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}" BorderThickness="1" CornerRadius="16" Padding="22">
@@ -70,7 +70,7 @@
             <Grid ColumnSpacing="16">
                 <Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="Auto" /></Grid.ColumnDefinitions>
                 <StackPanel Orientation="Horizontal" Spacing="12" VerticalAlignment="Center"><ProgressRing x:Name="ExportProgress" IsActive="False" Visibility="Collapsed" Width="22" Height="22" /><TextBlock x:Name="ExportStatus" Text="计划已保存，可以开始导出。" VerticalAlignment="Center" TextWrapping="Wrap" /></StackPanel>
-                <Button x:Name="ConfirmExportButton" Grid.Column="1" Content="确认导出" Padding="28,12" Style="{StaticResource AccentButtonStyle}" Click="ConfirmExport_Click" />
+                <Button x:Name="ConfirmExportButton" Grid.Column="1" Content="确认导出" Padding="28,12" Style="{StaticResource ExecuteButtonStyle}" Click="ConfirmExport_Click" />
             </Grid>
         </StackPanel>
     </Grid>

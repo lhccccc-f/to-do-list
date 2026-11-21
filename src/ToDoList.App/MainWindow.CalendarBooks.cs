@@ -133,7 +133,7 @@ public sealed partial class MainWindow
                 }
             }
         };
-        DialogService.SetActions(dialog, "返回", "确认删除");
+        DialogService.SetActions(dialog, "确认删除");
         CalendarBook? nextBook = null;
         dialog.SecondaryButtonClick += (_, args) =>
         {
@@ -177,7 +177,7 @@ public sealed partial class MainWindow
             XamlRoot = Root.XamlRoot, Title = "重命名日历簿",
             Content = new StackPanel { Spacing = 8, Children = { input, error } }
         };
-        DialogService.SetActions(dialog, "取消", "保存", defaultToExecute: true);
+        DialogService.SetActions(dialog, "保存", submitFrom: input);
         dialog.Opened += (_, _) => { input.Focus(FocusState.Programmatic); input.SelectAll(); };
         dialog.SecondaryButtonClick += (_, args) =>
         {

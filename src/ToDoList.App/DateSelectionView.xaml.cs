@@ -12,7 +12,6 @@ public sealed partial class DateSelectionView : UserControl
     private static readonly Color[] PlanDensity = [Microsoft.UI.Colors.Teal];
     private DateOnly _anchor;
     private bool _updating;
-    private bool _isBatchAdd;
     private IReadOnlyDictionary<DateOnly, int> _counts = new Dictionary<DateOnly, int>();
 
     public DateSelectionView()
@@ -29,38 +28,14 @@ public sealed partial class DateSelectionView : UserControl
     public DateOnly[] SelectedDates => Calendar.SelectedDates.Select(date => DateOnly.FromDateTime(date.DateTime))
         .Distinct().Order().ToArray();
 
-    public void Open(DateOnly anchor, IReadOnlyDictionary<DateOnly, int> counts, bool isBatchAdd = false)
+    public void Open(DateOnly anchor, IReadOnlyDictionary<DateOnly, int> counts, bool selectAnchorWeek = true)
     {
         _anchor = anchor;
         _counts = counts;
-        if (isBatchAdd != _isBatchAdd)
-        {
-            if (isBatchAdd)
-            {
-                DateFields.Children.Remove(RangeFields);
-                RangeFlyout.Content = RangeFields;
-            }
-            else
-            {
-                RangeFlyout.Content = null;
-                DateFields.Children.Insert(2, RangeFields);
-            }
-            _isBatchAdd = isBatchAdd;
-        }
-        RangeButton.Visibility = CancelRangeButton.Visibility = isBatchAdd ? Visibility.Visible : Visibility.Collapsed;
-        ApplyRangeButton.Content = isBatchAdd ? "加入所选日期" : "应用范围";
-        if (isBatchAdd)
-        {
-            RangeStart.Date = RangeEnd.Date = null;
-            SelectDates([]);
-        }
-        else
-        {
-            var week = ExportPlanner.WeekContaining(anchor);
-            RangeStart.Date = ToCalendarDate(week[0]);
-            RangeEnd.Date = ToCalendarDate(week[^1]);
-            SelectDates(week);
-        }
+        RangeStart.Date = RangeEnd.Date = null;
+        RangeStart.SetDisplayDate(ToCalendarDate(anchor));
+        RangeEnd.SetDisplayDate(ToCalendarDate(anchor));
+        SelectDates(selectAnchorWeek ? ExportPlanner.WeekContaining(anchor) : []);
         Calendar.SetDisplayDate(ToCalendarDate(anchor));
         RefreshVisibleDays(Calendar);
     }
@@ -128,9 +103,9 @@ public sealed partial class DateSelectionView : UserControl
         if (start > end) { ShowError("结束日期不能早于开始日期。"); return; }
         if (end.DayNumber - start.DayNumber > 3660) { ShowError("一次连续范围最多选择 3661 天。"); return; }
         var range = Enumerable.Range(0, end.DayNumber - start.DayNumber + 1).Select(start.AddDays);
-        SelectDates(_isBatchAdd ? SelectedDates.Union(range) : range);
+        SelectDates(SelectedDates.Union(range));
         Calendar.SetDisplayDate(ToCalendarDate(start));
-        if (_isBatchAdd) RangeFlyout.Hide();
+        RangeFlyout.Hide();
     }
 
     private void ShowError(string message)

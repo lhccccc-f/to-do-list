@@ -22,7 +22,7 @@ public sealed partial class MainWindow
             };
             var duration = new TextBox { Header = "预计用时", PlaceholderText = "可留空", MaxLength = 200 };
             var dates = new DateSelectionView();
-            dates.Open(_selected, _repository!.GetDayCounts(DateOnly.MinValue, DateOnly.MaxValue, bookId), isBatchAdd: true);
+            dates.Open(_selected, _repository!.GetDayCounts(DateOnly.MinValue, DateOnly.MaxValue, bookId), selectAnchorWeek: false);
             var addFields = new StackPanel { Spacing = 12, Children = { content, duration, dates } };
             var batches = new StackPanel { Spacing = 8 };
             var confirmation = new TextBlock { TextWrapping = TextWrapping.Wrap, MaxLines = 5,
@@ -43,7 +43,7 @@ public sealed partial class MainWindow
                 XamlRoot = Root.XamlRoot, Title = $"批量设置 · {_book.Name}",
                 Content = new StackPanel { Spacing = 12, Children = { tabs, fields, confirmation, error } }
             };
-            DialogService.SetActions(dialog, "返回", "确定");
+            DialogService.SetActions(dialog, "确定");
 
             void UpdateAction()
             {
@@ -182,7 +182,7 @@ public sealed partial class MainWindow
                     Children = { new ScrollViewer { MaxHeight = 360, Content = choices }, error }
                 }
             };
-            DialogService.SetActions(dialog, "取消", "确认删除（0）");
+            DialogService.SetActions(dialog, "确认删除（0）");
             dialog.IsSecondaryButtonEnabled = false;
             foreach (var item in rows.Where(item => !item.IsBlank))
             {
