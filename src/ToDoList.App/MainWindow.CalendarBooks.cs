@@ -26,13 +26,14 @@ public sealed partial class MainWindow
                 var row = new Grid { ColumnSpacing = 4 };
                 row.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
                 row.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Auto) });
+                row.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Auto) });
                 var select = new Button
                 {
                     HorizontalAlignment = HorizontalAlignment.Stretch,
                     HorizontalContentAlignment = HorizontalAlignment.Left,
                     Content = new TextBlock
                     {
-                        Text = book.Name, MaxWidth = 192, TextTrimming = TextTrimming.CharacterEllipsis
+                        Text = book.Name, MaxWidth = 158, TextTrimming = TextTrimming.CharacterEllipsis
                     }
                 };
                 if (book.Id == _book.Id)
@@ -58,8 +59,22 @@ public sealed partial class MainWindow
                     await RenameBookAsync(book);
                 };
                 Grid.SetColumn(rename, 1);
+                var delete = new Button
+                {
+                    Style = (Style)Application.Current.Resources["QuietButton"],
+                    Content = new FontIcon { Glyph = "\uE74D", FontSize = 14 }
+                };
+                ToolTipService.SetToolTip(delete, "删除日历簿");
+                AutomationProperties.SetName(delete, $"删除日历簿 {book.Name}");
+                delete.Click += async (_, _) =>
+                {
+                    BookFlyout.Hide();
+                    await DeleteBookAsync(book);
+                };
+                Grid.SetColumn(delete, 2);
                 row.Children.Add(select);
                 row.Children.Add(rename);
+                row.Children.Add(delete);
                 BookList.Children.Add(row);
             }
         }
@@ -89,11 +104,67 @@ public sealed partial class MainWindow
         var date = book.SelectedDate ?? DateOnly.FromDateTime(DateTime.Today);
         var loaded = _repository!.LoadDay(date, book.Id);
         _repository.SetSetting("ActiveBook", book.Id.ToString(CultureInfo.InvariantCulture));
+        DisplayBook(book, date, loaded);
+    }
+
+    private void DisplayBook(CalendarBook book, DateOnly date, IReadOnlyList<PlanItem> loaded)
+    {
         _book = book;
         _selected = date;
         _month = new DateOnly(date.Year, date.Month, 1);
         UpdateBookName();
         LoadSelectedDay(loaded);
+    }
+
+    private async Task DeleteBookAsync(CalendarBook book)
+    {
+        if (DialogService.IsOpen) return;
+        var error = new InfoBar { Severity = InfoBarSeverity.Error };
+        var dialog = new ContentDialog
+        {
+            XamlRoot = Root.XamlRoot, Title = "删除日历簿？",
+            Content = new StackPanel
+            {
+                Spacing = 8,
+                Children =
+                {
+                    new TextBlock { Text = $"将删除「{book.Name}」及其中所有计划和批次。", TextWrapping = TextWrapping.Wrap },
+                    error
+                }
+            }
+        };
+        DialogService.SetActions(dialog, "返回", "确认删除");
+        CalendarBook? nextBook = null;
+        dialog.SecondaryButtonClick += (_, args) =>
+        {
+            try
+            {
+                SavePendingChanges();
+                nextBook = _repository!.DeleteBook(book.Id, _book.Id);
+            }
+            catch (Exception exception)
+            {
+                args.Cancel = true;
+                error.Message = exception.Message;
+                error.IsOpen = true;
+            }
+        };
+        try
+        {
+            if (await DialogService.ShowAsync(dialog) == ContentDialogResult.Secondary)
+            {
+                if (book.Id == _book.Id && nextBook is not null)
+                {
+                    var date = nextBook.SelectedDate ?? DateOnly.FromDateTime(DateTime.Today);
+                    DisplayBook(nextBook, date, _repository!.LoadDay(date, nextBook.Id));
+                }
+            }
+            else
+            {
+                BookFlyout.ShowAt(BookButton);
+            }
+        }
+        catch (Exception exception) { await ShowMessage("无法更新日历簿", exception.Message); }
     }
 
     private async Task RenameBookAsync(CalendarBook book)
@@ -104,11 +175,11 @@ public sealed partial class MainWindow
         var dialog = new ContentDialog
         {
             XamlRoot = Root.XamlRoot, Title = "重命名日历簿",
-            Content = new StackPanel { Spacing = 8, Children = { input, error } },
-            PrimaryButtonText = "保存", CloseButtonText = "取消", DefaultButton = ContentDialogButton.Primary
+            Content = new StackPanel { Spacing = 8, Children = { input, error } }
         };
+        DialogService.SetActions(dialog, "取消", "保存", defaultToExecute: true);
         dialog.Opened += (_, _) => { input.Focus(FocusState.Programmatic); input.SelectAll(); };
-        dialog.PrimaryButtonClick += (_, args) =>
+        dialog.SecondaryButtonClick += (_, args) =>
         {
             try
             {

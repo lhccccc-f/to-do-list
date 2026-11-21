@@ -42,7 +42,7 @@ public sealed partial class ExportView : UserControl
         ResultButtons.Children.Clear();
         ExportStatus.Text = "计划已保存，可以开始导出。";
         RestoreFolder();
-        ExportDates.Open(selected, repository.GetDayCounts(DateOnly.MinValue, DateOnly.MaxValue, _bookId), selectWeek: true);
+        ExportDates.Open(selected, repository.GetDayCounts(DateOnly.MinValue, DateOnly.MaxValue, _bookId));
     }
 
     private string FileName => _customName ?? ExportPlanner.TitleFor(ExportDates.SelectedDates);
@@ -61,11 +61,11 @@ public sealed partial class ExportView : UserControl
         var fields = new StackPanel { Spacing = 8, Children = { input, error } };
         var dialog = new ContentDialog
         {
-            XamlRoot = XamlRoot, Title = "编辑文件名", Content = fields,
-            PrimaryButtonText = "保存", CloseButtonText = "取消", DefaultButton = ContentDialogButton.Primary
+            XamlRoot = XamlRoot, Title = "编辑文件名", Content = fields
         };
+        DialogService.SetActions(dialog, "取消", "保存", defaultToExecute: true);
         string? validName = null;
-        dialog.PrimaryButtonClick += (_, args) =>
+        dialog.SecondaryButtonClick += (_, args) =>
         {
             try { validName = ExportPlanner.ValidateFileName(input.Text); }
             catch (InvalidOperationException exception)
@@ -76,7 +76,7 @@ public sealed partial class ExportView : UserControl
             }
         };
         dialog.Opened += (_, _) => { input.Focus(FocusState.Programmatic); input.SelectAll(); };
-        if (await DialogService.ShowAsync(dialog) == ContentDialogResult.Primary)
+        if (await DialogService.ShowAsync(dialog) == ContentDialogResult.Secondary)
         {
             _customName = validName;
             RefreshName();
@@ -220,10 +220,10 @@ public sealed partial class ExportView : UserControl
         var dialog = new ContentDialog
         {
             XamlRoot = XamlRoot, Title = "覆盖已有文件？",
-            Content = new TextBlock { Text = files, TextWrapping = TextWrapping.Wrap },
-            PrimaryButtonText = $"覆盖 {paths.Count} 个文件", CloseButtonText = "取消", DefaultButton = ContentDialogButton.Close
+            Content = new TextBlock { Text = files, TextWrapping = TextWrapping.Wrap }
         };
-        return await DialogService.ShowAsync(dialog) == ContentDialogResult.Primary;
+        DialogService.SetActions(dialog, "取消", $"覆盖 {paths.Count} 个文件");
+        return await DialogService.ShowAsync(dialog) == ContentDialogResult.Secondary;
     }
 
     private void AddResultButton(string label, string path)

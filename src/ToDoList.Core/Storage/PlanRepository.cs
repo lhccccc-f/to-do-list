@@ -170,9 +170,12 @@ public sealed class PlanRepository : IDisposable
         return result;
     }
 
-    public IReadOnlyList<CalendarBook> LoadBooks()
+    public IReadOnlyList<CalendarBook> LoadBooks() => LoadBooks(null);
+
+    private List<CalendarBook> LoadBooks(SqliteTransaction? transaction)
     {
         using var command = _connection.CreateCommand();
+        command.Transaction = transaction;
         command.CommandText = "SELECT Id, Name, SelectedDate FROM CalendarBooks ORDER BY Id";
         using var reader = command.ExecuteReader();
         var books = new List<CalendarBook>();
@@ -208,6 +211,40 @@ public sealed class PlanRepository : IDisposable
         command.Parameters.AddWithValue("$book", bookId);
         command.Parameters.AddWithValue("$name", name);
         command.ExecuteNonQuery();
+    }
+
+    public CalendarBook DeleteBook(int bookId, int activeBookId)
+    {
+        using var transaction = _connection.BeginTransaction();
+        var books = LoadBooks(transaction);
+        var index = books.FindIndex(book => book.Id == bookId);
+        if (index < 0) throw new InvalidOperationException("此日历簿已不存在。");
+        books.RemoveAt(index);
+
+        using var command = _connection.CreateCommand();
+        command.Transaction = transaction;
+        command.CommandText = """
+            DELETE FROM Plans WHERE BookId = $book;
+            DELETE FROM PlanBatches WHERE BookId = $book;
+            DELETE FROM CalendarBooks WHERE Id = $book;
+            """;
+        command.Parameters.AddWithValue("$book", bookId);
+        command.ExecuteNonQuery();
+
+        if (books.Count == 0)
+        {
+            command.CommandText = "INSERT INTO CalendarBooks(Id, Name) VALUES (1, '日历簿 1')";
+            command.ExecuteNonQuery();
+            books.Add(new CalendarBook(FirstBookId, "日历簿 1", null));
+        }
+
+        // Keep the active book if it survived. Otherwise use the next book,
+        // or the previous one when the deleted book was last in the list.
+        var active = books.FirstOrDefault(book => book.Id == activeBookId)
+            ?? books[Math.Min(index, books.Count - 1)];
+        SetSetting("ActiveBook", active.Id.ToString(CultureInfo.InvariantCulture), transaction);
+        transaction.Commit();
+        return active;
     }
 
     public void SetBookDate(int bookId, DateOnly date)
@@ -262,16 +299,23 @@ public sealed class PlanRepository : IDisposable
     {
         using var command = _connection.CreateCommand();
         command.CommandText = """
-            SELECT b.Id, b.Content, b.DateSummary, COUNT(*)
+            SELECT b.Id, b.Content, p.PlanDate, COUNT(*)
             FROM PlanBatches b JOIN Plans p ON p.BatchId = b.Id AND p.BookId = b.BookId
-            WHERE b.BookId = $book GROUP BY b.Id ORDER BY b.Id DESC
+            WHERE b.BookId = $book
+            GROUP BY b.Id, p.PlanDate
+            ORDER BY b.Id DESC, p.PlanDate
             """;
         command.Parameters.AddWithValue("$book", bookId);
         using var reader = command.ExecuteReader();
-        var batches = new List<PlanBatch>();
+        var days = new List<(int Id, string Content, DateOnly Date, int Count)>();
         while (reader.Read())
-            batches.Add(new PlanBatch(reader.GetInt32(0), reader.GetString(1), reader.GetString(2), reader.GetInt32(3)));
-        return batches;
+        {
+            var date = DateOnly.ParseExact(reader.GetString(2), "yyyy-MM-dd", CultureInfo.InvariantCulture);
+            days.Add((reader.GetInt32(0), reader.GetString(1), date, reader.GetInt32(3)));
+        }
+        return days.GroupBy(day => day.Id).Select(batch =>
+            new PlanBatch(batch.Key, batch.First().Content, DateRanges.Format(batch.Select(day => day.Date)),
+                batch.Sum(day => day.Count), batch.Count())).ToArray();
     }
 
     public void DeleteBatch(int bookId, int batchId)
@@ -307,9 +351,12 @@ public sealed class PlanRepository : IDisposable
         return command.ExecuteScalar() as string;
     }
 
-    public void SetSetting(string key, string value)
+    public void SetSetting(string key, string value) => SetSetting(key, value, null);
+
+    private void SetSetting(string key, string value, SqliteTransaction? transaction)
     {
         using var command = _connection.CreateCommand();
+        command.Transaction = transaction;
         command.CommandText = "INSERT INTO Settings(Key,Value) VALUES($key,$value) ON CONFLICT(Key) DO UPDATE SET Value=excluded.Value";
         command.Parameters.AddWithValue("$key", key);
         command.Parameters.AddWithValue("$value", value);

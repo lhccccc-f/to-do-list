@@ -302,8 +302,9 @@ public sealed partial class MainWindow : Window
             _showingDialog = true;
             try
             {
-                var dialog = new ContentDialog { XamlRoot = Root.XamlRoot, Title = "删除这项计划？", Content = "删除后将自动保存。", PrimaryButtonText = "删除", CloseButtonText = "取消", DefaultButton = ContentDialogButton.Close };
-                if (await DialogService.ShowAsync(dialog) != ContentDialogResult.Primary) return;
+                var dialog = new ContentDialog { XamlRoot = Root.XamlRoot, Title = "删除这项计划？", Content = "删除后将自动保存。" };
+                DialogService.SetActions(dialog, "取消", "删除");
+                if (await DialogService.ShowAsync(dialog) != ContentDialogResult.Secondary) return;
             }
             finally { _showingDialog = false; }
         }

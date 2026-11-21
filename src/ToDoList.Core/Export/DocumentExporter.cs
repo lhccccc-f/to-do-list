@@ -51,7 +51,7 @@ public sealed class DocumentExporter(string fontFile)
                 columns);
 
             if (day.Items.Count == 0)
-                for (var i = 0; i < 3; i++) AddWordRow(table, plan.ShowCheckboxes ? "□" : null, "________________________________", "________");
+                for (var i = 0; i < 3; i++) AddWordRow(table, plan.ShowCheckboxes ? "□" : null, "", "");
             foreach (var item in day.Items)
             {
                 var content = TextFlow.Chunks(item.Content);
@@ -160,7 +160,7 @@ public sealed class DocumentExporter(string fontFile)
             table.AddColumn(M.Unit.FromMillimeter(plan.ShowCheckboxes ? 122.38 : 131.2));
             table.AddColumn(M.Unit.FromMillimeter(38.8));
             if (day.Items.Count == 0)
-                for (var i = 0; i < 3; i++) AddPdfRow(table, plan.ShowCheckboxes ? "□" : null, "________________________________", "________");
+                for (var i = 0; i < 3; i++) AddPdfRow(table, plan.ShowCheckboxes ? "□" : null, "", "");
             foreach (var item in day.Items)
             {
                 var content = TextFlow.Chunks(item.Content);

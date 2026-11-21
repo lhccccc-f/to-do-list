@@ -1,6 +1,7 @@
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Automation;
 using Microsoft.UI.Xaml.Controls;
+using Microsoft.UI.Xaml.Media;
 using ToDoList.Core.Export;
 using ToDoList.Core.Models;
 
@@ -21,35 +22,86 @@ public sealed partial class MainWindow
             };
             var duration = new TextBox { Header = "预计用时", PlaceholderText = "可留空", MaxLength = 200 };
             var dates = new DateSelectionView();
-            dates.Open(_selected, _repository!.GetDayCounts(DateOnly.MinValue, DateOnly.MaxValue, bookId), selectWeek: false);
+            dates.Open(_selected, _repository!.GetDayCounts(DateOnly.MinValue, DateOnly.MaxValue, bookId), isBatchAdd: true);
             var addFields = new StackPanel { Spacing = 12, Children = { content, duration, dates } };
             var batches = new StackPanel { Spacing = 8 };
-            var confirmation = new StackPanel { Spacing = 8, Visibility = Visibility.Collapsed };
+            var confirmation = new TextBlock { TextWrapping = TextWrapping.Wrap, MaxLines = 5,
+                TextTrimming = TextTrimming.CharacterEllipsis, Visibility = Visibility.Collapsed };
             var error = new InfoBar { Severity = InfoBarSeverity.Error, IsClosable = true };
-            var deleteFields = new StackPanel { Spacing = 12, Children = { confirmation, batches } };
-            var tabs = new Pivot();
-            tabs.Items.Add(new PivotItem { Header = "批量添加", Margin = new Thickness(0),
-                Content = new ScrollViewer { Content = addFields, MaxHeight = 464, VerticalScrollBarVisibility = ScrollBarVisibility.Auto } });
-            tabs.Items.Add(new PivotItem { Header = "删除批量添加", Margin = new Thickness(0),
-                Content = new ScrollViewer { Content = deleteFields, MaxHeight = 464, VerticalScrollBarVisibility = ScrollBarVisibility.Auto } });
-            tabs.SelectedIndex = 0;
+            var addTab = new Button { Content = "批量添加" };
+            var deleteTab = new Button { Content = "删除批量添加" };
+            var tabs = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 8, Children = { addTab, deleteTab } };
+            var fields = new ScrollViewer { Content = addFields, MaxHeight = 420, VerticalScrollBarVisibility = ScrollBarVisibility.Auto };
+            var addMode = true;
+            PlanBatch? selectedBatch = null;
+            Border? selectedOutline = null;
+            var accent = (Brush)Application.Current.Resources["AccentTextFillColorPrimaryBrush"];
+            var accentStyle = (Style)Application.Current.Resources["AccentButtonStyle"];
+            var quietStyle = (Style)Application.Current.Resources["QuietButton"];
             var dialog = new ContentDialog
             {
                 XamlRoot = Root.XamlRoot, Title = $"批量设置 · {_book.Name}",
-                Content = new StackPanel { Children = { tabs, error } },
-                PrimaryButtonText = "确定", CloseButtonText = "返回", DefaultButton = ContentDialogButton.Close
+                Content = new StackPanel { Spacing = 12, Children = { tabs, fields, confirmation, error } }
             };
-            tabs.SelectionChanged += (_, _) =>
+            DialogService.SetActions(dialog, "返回", "确定");
+
+            void UpdateAction()
             {
+                dialog.SecondaryButtonText = addMode ? "确定" : "确认删除";
+                dialog.IsSecondaryButtonEnabled = addMode
+                    ? !string.IsNullOrWhiteSpace(content.Text) && dates.SelectedDates.Length > 0
+                    : selectedBatch is not null;
+            }
+
+            void SelectBatch(PlanBatch? batch, Border? outline)
+            {
+                if (selectedOutline is not null) selectedOutline.BorderBrush = null;
+                selectedBatch = batch;
+                selectedOutline = outline;
+                if (outline is not null) outline.BorderBrush = accent;
+                confirmation.Visibility = batch is null ? Visibility.Collapsed : Visibility.Visible;
+                if (batch is not null)
+                    confirmation.Text = $"删除「{batch.Content}」在 {batch.DateSummary} 的 {batch.RemainingCount} 条计划？单独修改过的条目会保留。";
+                UpdateAction();
+            }
+
+            void ShowTab(bool adding)
+            {
+                addMode = adding;
+                addTab.Style = adding ? accentStyle : quietStyle;
+                deleteTab.Style = adding ? quietStyle : accentStyle;
                 error.IsOpen = false;
-                confirmation.Visibility = Visibility.Collapsed;
-                dialog.PrimaryButtonText = tabs.SelectedIndex == 0 ? "确定" : "";
+                SelectBatch(null, null);
+                fields.Content = adding ? addFields : batches;
+                if (!adding) RefreshBatches();
+                fields.ChangeView(null, 0, null);
+            }
+
+            content.TextChanged += (_, _) => UpdateAction();
+            dates.SelectionChanged += (_, _) => UpdateAction();
+            addTab.Click += (_, _) => ShowTab(true);
+            deleteTab.Click += (_, _) =>
+            {
+                try { ShowTab(false); }
+                catch (Exception exception) { SetBatchError(error, exception.Message); }
             };
-            dialog.PrimaryButtonClick += (_, args) =>
+            dialog.SecondaryButtonClick += (_, args) =>
             {
                 try
                 {
-                    _repository.AddBatch(bookId, dates.SelectedDates, content.Text, duration.Text);
+                    if (addMode)
+                    {
+                        _repository.AddBatch(bookId, dates.SelectedDates, content.Text, duration.Text);
+                    }
+                    else
+                    {
+                        args.Cancel = true;
+                        if (selectedBatch is null) return;
+                        _repository.DeleteBatch(bookId, selectedBatch.Id);
+                        SelectBatch(null, null);
+                        RefreshBatches();
+                        LoadSelectedDay();
+                    }
                 }
                 catch (Exception exception)
                 {
@@ -66,7 +118,7 @@ public sealed partial class MainWindow
                     var row = new Grid { ColumnSpacing = 10 };
                     row.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
                     row.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Auto) });
-                    row.Children.Add(new StackPanel
+                    var entry = new StackPanel
                     {
                         Spacing = 4,
                         Children =
@@ -74,12 +126,19 @@ public sealed partial class MainWindow
                             new TextBlock { Text = batch.Content, TextWrapping = TextWrapping.Wrap, MaxLines = 3,
                                 TextTrimming = TextTrimming.CharacterEllipsis },
                             new TextBlock { Text = batch.DateSummary, TextWrapping = TextWrapping.Wrap },
-                            new TextBlock { Text = $"剩余 {batch.RemainingCount} 条", FontSize = 12 }
+                            new TextBlock { Text = $"剩余 {batch.RemainingDays} 天 · {batch.RemainingCount} 条", FontSize = 12 }
                         }
-                    });
+                    };
+                    var select = new Button
+                    {
+                        Style = quietStyle, Content = entry, HorizontalAlignment = HorizontalAlignment.Stretch,
+                        HorizontalContentAlignment = HorizontalAlignment.Stretch
+                    };
+                    AutomationProperties.SetName(select, $"选择批次 {batch.Content} · {batch.DateSummary}");
+                    row.Children.Add(select);
                     var delete = new Button
                     {
-                        Style = (Style)Application.Current.Resources["QuietButton"],
+                        Style = quietStyle,
                         Content = new FontIcon { Glyph = "\uE74D", FontSize = 14 },
                         VerticalAlignment = VerticalAlignment.Center
                     };
@@ -87,46 +146,17 @@ public sealed partial class MainWindow
                     ToolTipService.SetToolTip(delete, "删除批次");
                     Grid.SetColumn(delete, 1);
                     row.Children.Add(delete);
-                    delete.Click += (_, _) => ConfirmBatchDelete(batch);
-                    batches.Children.Add(row);
+                    var outline = new Border { BorderThickness = new Thickness(1), CornerRadius = new CornerRadius(8), Child = row };
+                    select.Click += (_, _) => SelectBatch(batch, outline);
+                    delete.Click += (_, _) => SelectBatch(batch, outline);
+                    batches.Children.Add(outline);
                 }
                 if (batches.Children.Count == 0)
                     batches.Children.Add(new TextBlock { Text = "当前日历簿没有可删除的批量计划。", TextWrapping = TextWrapping.Wrap });
             }
 
-            void ConfirmBatchDelete(PlanBatch batch)
-            {
-                error.IsOpen = false;
-                confirmation.Children.Clear();
-                confirmation.Children.Add(new TextBlock
-                {
-                    Text = $"删除该批次剩余的 {batch.RemainingCount} 条计划？单独改过的条目会保留。",
-                    TextWrapping = TextWrapping.Wrap
-                });
-                var remove = new Button { Content = "确认删除" };
-                var cancel = new Button { Content = "取消" };
-                confirmation.Children.Add(new StackPanel
-                    { Orientation = Orientation.Horizontal, Spacing = 8, Children = { remove, cancel } });
-                cancel.Click += (_, _) => confirmation.Visibility = Visibility.Collapsed;
-                remove.Click += (_, _) =>
-                {
-                    try
-                    {
-                        _repository.DeleteBatch(bookId, batch.Id);
-                        confirmation.Visibility = Visibility.Collapsed;
-                        RefreshBatches();
-                        LoadSelectedDay();
-                    }
-                    catch (Exception exception) { SetBatchError(error, exception.Message); }
-                };
-                confirmation.Visibility = Visibility.Visible;
-                // The confirmation is above the list, including when the list is scrolled.
-                ((ScrollViewer)((PivotItem)tabs.Items[1]).Content).ChangeView(null, 0, null);
-                cancel.Focus(FocusState.Programmatic);
-            }
-
-            RefreshBatches();
-            if (await DialogService.ShowAsync(dialog) == ContentDialogResult.Primary)
+            ShowTab(true);
+            if (await DialogService.ShowAsync(dialog) == ContentDialogResult.Secondary)
                 LoadSelectedDay();
         }
         catch (Exception exception) { await ShowMessage("无法完成批量设置", exception.Message); }
@@ -150,10 +180,10 @@ public sealed partial class MainWindow
                 {
                     Spacing = 8,
                     Children = { new ScrollViewer { MaxHeight = 360, Content = choices }, error }
-                },
-                PrimaryButtonText = "确认删除（0）", CloseButtonText = "取消",
-                DefaultButton = ContentDialogButton.Close, IsPrimaryButtonEnabled = false
+                }
             };
+            DialogService.SetActions(dialog, "取消", "确认删除（0）");
+            dialog.IsSecondaryButtonEnabled = false;
             foreach (var item in rows.Where(item => !item.IsBlank))
             {
                 var text = string.IsNullOrWhiteSpace(item.Content) ? "未填写计划内容" : item.Content;
@@ -176,11 +206,11 @@ public sealed partial class MainWindow
 
             void UpdateSelection()
             {
-                dialog.PrimaryButtonText = $"确认删除（{selected.Count}）";
-                dialog.IsPrimaryButtonEnabled = selected.Count > 0;
+                dialog.SecondaryButtonText = $"确认删除（{selected.Count}）";
+                dialog.IsSecondaryButtonEnabled = selected.Count > 0;
             }
 
-            dialog.PrimaryButtonClick += (_, args) =>
+            dialog.SecondaryButtonClick += (_, args) =>
             {
                 try { _repository!.SaveDay(date, rows.Where(item => !selected.Contains(item.Id)), _book.Id); }
                 catch (Exception exception)
@@ -189,7 +219,7 @@ public sealed partial class MainWindow
                     SetBatchError(error, exception.Message);
                 }
             };
-            if (await DialogService.ShowAsync(dialog) == ContentDialogResult.Primary)
+            if (await DialogService.ShowAsync(dialog) == ContentDialogResult.Secondary)
                 LoadSelectedDay();
         }
         catch (Exception exception) { await ShowMessage("无法删除计划", exception.Message); }
